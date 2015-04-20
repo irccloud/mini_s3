@@ -46,6 +46,7 @@
          delete_object_version/4,
          get_object/3,
          get_object/4,
+         get_object/5,
          get_object_acl/2,
          get_object_acl/3,
          get_object_acl/4,
@@ -507,6 +508,12 @@ get_object(BucketName, Key, Options) ->
                         proplists:proplist().
 
 get_object(BucketName, Key, Options, Config) ->
+    get_object(BucketName, Key, Options, Config, false).
+
+stream_object(BucketName, Key, Options, Config) ->
+    get_object(BucketName, Key, Options, Config, true).
+
+get_object(BucketName, Key, Options, Config, Chunked) ->
     RequestHeaders = [{"Range", proplists:get_value(range, Options)},
                       {"If-Modified-Since", proplists:get_value(if_modified_since, Options)},
                       {"If-Unmodified-Since", proplists:get_value(if_unmodified_since, Options)},
@@ -516,7 +523,7 @@ get_object(BucketName, Key, Options, Config) ->
                       undefined -> "";
                       Version   -> ["versionId=", Version]
                   end,
-    {Headers, Body} = s3_request(Config, get, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders),
+    {Headers, Body} = s3_request(Config, get, BucketName, [$/|Key], Subresource, [], <<>>, RequestHeaders, Chunked),
     [{etag, proplists:get_value("etag", Headers)},
      {content_length, proplists:get_value("content-length", Headers)},
      {content_type, proplists:get_value("content-type", Headers)},
@@ -801,9 +808,12 @@ s3_xml_request(Config, Method, Host, Path, Subresource, Params, POSTData, Header
             XML
     end.
 
+s3_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) ->
+    s3_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers, false).
+
 s3_request(Config = #config{access_key_id=AccessKey,
                             secret_access_key=SecretKey},
-           Method, Host, Path, Subresource, Params, POSTData, Headers) ->
+           Method, Host, Path, Subresource, Params, POSTData, Headers, Chunked) ->
     {ContentMD5, ContentType, Body} =
         case POSTData of
             {PD, CT} ->
@@ -857,7 +867,13 @@ s3_request(Config = #config{access_key_id=AccessKey,
     case Response of
         {ok, Status, ResponseHeaders0, ClientRef} ->
             ResponseHeaders = canonicalize_headers(ResponseHeaders0),
-            {ok, ResponseBody} = hackney:body(ClientRef),
+            ResponseBody = case Chunked of
+                true ->
+                    ClientRef;
+                false ->
+                    {ok, FetchedBody} = hackney:body(ClientRef),
+                    FetchedBody
+            end,
             case Status of
                 OKStatus when OKStatus >= 200, OKStatus =< 299 ->
                     {ResponseHeaders, ResponseBody};
