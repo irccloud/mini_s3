@@ -871,8 +871,12 @@ s3_request(Config = #config{access_key_id=AccessKey,
                 true ->
                     ClientRef;
                 false ->
-                    {ok, FetchedBody} = hackney:body(ClientRef),
-                    FetchedBody
+                    case hackney:body(ClientRef) of
+                        {ok, FetchedBody} ->
+                            FetchedBody;
+                        Other ->
+                            erlang:error({aws_error, {body_read_error, Other}})
+                    end
             end,
             case Status of
                 OKStatus when OKStatus >= 200, OKStatus =< 299 ->
