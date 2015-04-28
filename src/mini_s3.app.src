@@ -30,7 +30,7 @@
                   crypto,
                   ssl,
                   xmerl,
-                  ibrowse]},
+                  hackney]},
   {modules, []},
   {env, []}
  ]
