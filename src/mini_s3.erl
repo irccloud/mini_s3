@@ -231,7 +231,7 @@ delete_object(BucketName, Key, Config)
                                   BucketName, [$/|Key], "", [], <<>>, []),
     Marker = proplists:get_value("x-amz-delete-marker", Headers, "false"),
     Id = proplists:get_value("x-amz-version-id", Headers, "null"),
-    [{delete_marker, binary_to_existing_atom(Marker)},
+    [{delete_marker, binary_to_existing_atom(Marker, utf8)},
      {version_id, Id}].
 
 -spec delete_object_version(string(), string(), string()) ->
