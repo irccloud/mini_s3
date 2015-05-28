@@ -871,14 +871,19 @@ s3_request(Config = #config{access_key_id=AccessKey,
                 true ->
                     ClientRef;
                 false ->
-                    case hackney:body(ClientRef) of
-                        {ok, FetchedBody} ->
-                            FetchedBody;
-                        %% Request verb has no body, e.g. DELETE
-                        {error, {closed, <<>>}} ->
-                            "";
-                        Other ->
-                            erlang:error({aws_error, {body_read_error, Other}})
+                    case lists:member(Method, [get, put, head]) of
+                        true ->
+                            case hackney:body(ClientRef) of
+                                {ok, FetchedBody} ->
+                                    FetchedBody;
+                                %% Request verb has no body, e.g. DELETE
+                                {error, {closed, <<>>}} ->
+                                    "";
+                                Other ->
+                                    erlang:error({aws_error, {body_read_error, Other}})
+                            end;
+                        false ->
+                            ""
                     end
             end,
             case Status of
