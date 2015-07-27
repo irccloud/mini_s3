@@ -863,7 +863,7 @@ s3_request(Config = #config{access_key_id=AccessKey,
                                     true -> [$&, ms3_http:make_query_string(Params)]
                                 end]),
 
-    Response = hackney:request(Method, RequestURI, RequestHeaders2, Body, []),
+    Response = hackney:request(Method, RequestURI, RequestHeaders2, Body, [{connect_timeout, 8000}, {recv_timeout, 20000}]),
     case Response of
         {ok, Status, ResponseHeaders0, ClientRef} ->
             ResponseHeaders = canonicalize_headers(ResponseHeaders0),
