@@ -229,7 +229,7 @@ delete_object(BucketName, Key, Config)
   when is_list(BucketName), is_list(Key) ->
     {Headers, _Body} = s3_request(Config, delete,
                                   BucketName, [$/|Key], "", [], <<>>, []),
-    Marker = proplists:get_value("x-amz-delete-marker", Headers, "false"),
+    Marker = proplists:get_value("x-amz-delete-marker", Headers, <<"false">>),
     Id = proplists:get_value("x-amz-version-id", Headers, "null"),
     [{delete_marker, binary_to_existing_atom(Marker, utf8)},
      {version_id, Id}].
