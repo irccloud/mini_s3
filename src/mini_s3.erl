@@ -905,7 +905,10 @@ make_authorization(AccessKeyId, SecretKey, Method, ContentMD5, ContentType, Date
     {StringToSign, ["AWS ", AccessKeyId, $:, Signature]}.
 
 default_config() ->
-    Defaults =  envy:get(mini_s3, s3_defaults, list),
+    Defaults = case application:get_env(mini_s3, s3_defaults) of
+        Def when is_list(Def) -> Def;
+        _ -> []
+    end,
     case proplists:is_defined(key_id, Defaults) andalso
         proplists:is_defined(secret_access_key, Defaults) of
         true ->
