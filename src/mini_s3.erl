@@ -784,7 +784,7 @@ s3_simple_request(Config, Method, Host, Path, Subresource, Params, POSTData, Hea
                     Subresource, Params, POSTData, Headers) of
         {_Headers, ""} -> ok;
         {_Headers, Body} ->
-            XML = element(1,xmerl_scan:string(Body)),
+            XML = element(1,xmerl_scan:string(binary_to_list(Body))),
             case XML of
                 #xmlElement{name='Error'} ->
                     ErrCode = ms3_xml:get_text("/Error/Code", XML),
@@ -798,7 +798,7 @@ s3_simple_request(Config, Method, Host, Path, Subresource, Params, POSTData, Hea
 s3_xml_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) ->
     {_Headers, Body} = s3_request(Config, Method, Host, Path,
                                   Subresource, Params, POSTData, Headers),
-    XML = element(1,xmerl_scan:string(Body)),
+    XML = element(1,xmerl_scan:string(binary_to_list(Body))),
     case XML of
         #xmlElement{name='Error'} ->
             ErrCode = ms3_xml:get_text("/Error/Code", XML),
