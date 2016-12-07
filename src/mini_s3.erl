@@ -77,7 +77,7 @@
               bucket_acl/0,
               location_constraint/0]).
 
--opaque config() :: record(config).
+-type config() :: #config{}.
 
 -type bucket_access_type() :: virtual_domain | path.
 
@@ -494,7 +494,7 @@ make_signed_url_authorization(SecretKey, Method, CanonicalizedResource,
                                   CanonicalizedResource
                                  ]),
 
-    Signature = base64:encode(crypto:sha_mac(SecretKey, StringToSign)),
+    Signature = base64:encode(crypto:hmac(sha, SecretKey, StringToSign)),
     {StringToSign, Signature}.
 
 
@@ -817,7 +817,7 @@ s3_request(Config = #config{access_key_id=AccessKey,
     {ContentMD5, ContentType, Body} =
         case POSTData of
             {PD, CT} ->
-                {base64:encode(crypto:md5(PD)), CT, PD};
+                {base64:encode(crypto:hash(md5, PD)), CT, PD};
             PD ->
                 %% On a put/post even with an empty body we need to
                 %% default to some content-type
@@ -909,7 +909,7 @@ make_authorization(AccessKeyId, SecretKey, Method, ContentMD5, ContentType, Date
                     if_not_empty(Host, [$/, Host]),
                     Resource,
                     if_not_empty(Subresource, [$?, Subresource])],
-    Signature = base64:encode(crypto:sha_mac(SecretKey, StringToSign)),
+    Signature = base64:encode(crypto:hmac(sha, SecretKey, StringToSign)),
     {StringToSign, ["AWS ", AccessKeyId, $:, Signature]}.
 
 default_config() ->
