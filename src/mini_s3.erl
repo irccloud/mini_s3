@@ -77,9 +77,9 @@
               bucket_acl/0,
               location_constraint/0]).
 
--opaque config() :: record(config).
+-opaque config() :: #config{}.
 
--type bucket_access_type() :: virtual_domain | path.
+-type bucket_access_type() :: virtual_hosted | path.
 
 -type bucket_attribute_name() :: acl
                                | location
@@ -465,11 +465,11 @@ s3_url(Method, BucketName, Key, Lifetime, RawHeaders,
                                                                Expires, RawHeaders),
 
     RequestURI = iolist_to_binary([
-                                   format_s3_uri(Config, ""), CanonicalizedResource,
-                                   $?, "AWSAccessKeyId=", AccessKey,
-                                   $&, "Expires=", Expires,
-                                   $&, "Signature=", ms3_http:url_encode_loose(Signature)
-                                  ]),
+        format_s3_uri(Config, ""), CanonicalizedResource,
+        $?, "AWSAccessKeyId=", AccessKey,
+        $&, "Expires=", Expires,
+        $&, "Signature=", ms3_http:url_encode_loose(Signature)
+    ]),
     RequestURI.
 
 make_signed_url_authorization(SecretKey, Method, CanonicalizedResource,
@@ -494,7 +494,7 @@ make_signed_url_authorization(SecretKey, Method, CanonicalizedResource,
                                   CanonicalizedResource
                                  ]),
 
-    Signature = base64:encode(crypto:sha_mac(SecretKey, StringToSign)),
+    Signature = base64:encode(crypto:hmac(sha, SecretKey, StringToSign)),
     {StringToSign, Signature}.
 
 
@@ -817,7 +817,7 @@ s3_request(Config = #config{access_key_id=AccessKey,
     {ContentMD5, ContentType, Body} =
         case POSTData of
             {PD, CT} ->
-                {base64:encode(crypto:md5(PD)), CT, PD};
+                {base64:encode(crypto:hash(md5, PD)), CT, PD};
             PD ->
                 %% On a put/post even with an empty body we need to
                 %% default to some content-type
@@ -854,16 +854,20 @@ s3_request(Config = #config{access_key_id=AccessKey,
                       end,
     RequestHeaders2 = [ {list_to_binary(K), list_to_binary(V)} || {K,V} <- RequestHeaders1 ],
 
-    RequestURI = lists:flatten([format_s3_uri(Config, Host),
-                                EscapedPath,
-                                if_not_empty(Subresource, [$?, Subresource]),
-                                if
-                                    Params =:= [] -> "";
-                                    Subresource =:= "" -> [$?, ms3_http:make_query_string(Params)];
-                                    true -> [$&, ms3_http:make_query_string(Params)]
-                                end]),
+    RequestURI = iolist_to_binary([
+        format_s3_uri(Config, Host),
+        EscapedPath,
+        if_not_empty(Subresource, [$?, Subresource]),
+        if
+            Params =:= [] -> "";
+            Subresource =:= "" -> [$?, ms3_http:make_query_string(Params)];
+            true -> [$&, ms3_http:make_query_string(Params)]
+        end
+    ]),
 
-    Response = hackney:request(Method, RequestURI, RequestHeaders2, Body, [{connect_timeout, 8000}, {recv_timeout, 20000}]),
+    Response = hackney:request(Method, RequestURI, RequestHeaders2, Body, [
+        {connect_timeout, 8000}, {recv_timeout, 20000}
+    ]),
     case Response of
         {ok, Status, ResponseHeaders0, ClientRef} ->
             ResponseHeaders = canonicalize_headers(ResponseHeaders0),
@@ -901,20 +905,22 @@ make_authorization(AccessKeyId, SecretKey, Method, ContentMD5, ContentType, Date
                    Host, Resource, Subresource) ->
     CanonizedAmzHeaders =
         [[Name, $:, Value, $\n] || {Name, Value} <- lists:sort(AmzHeaders)],
-    StringToSign = [string:to_upper(atom_to_list(Method)), $\n,
-                    ContentMD5, $\n,
-                    ContentType, $\n,
-                    Date, $\n,
-                    CanonizedAmzHeaders,
-                    if_not_empty(Host, [$/, Host]),
-                    Resource,
-                    if_not_empty(Subresource, [$?, Subresource])],
-    Signature = base64:encode(crypto:sha_mac(SecretKey, StringToSign)),
+    StringToSign = [
+        string:to_upper(atom_to_list(Method)), $\n,
+        ContentMD5, $\n,
+        ContentType, $\n,
+        Date, $\n,
+        CanonizedAmzHeaders,
+        if_not_empty(Host, [$/, Host]),
+        Resource,
+        if_not_empty(Subresource, [$?, Subresource])
+    ],
+    Signature = base64:encode(crypto:hmac(sha, SecretKey, StringToSign)),
     {StringToSign, ["AWS ", AccessKeyId, $:, Signature]}.
 
 default_config() ->
     Defaults = case application:get_env(mini_s3, s3_defaults) of
-        Def when is_list(Def) -> Def;
+        {ok, Def} when is_list(Def) -> Def;
         _ -> []
     end,
     case proplists:is_defined(key_id, Defaults) andalso
