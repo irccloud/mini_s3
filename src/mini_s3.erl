@@ -229,9 +229,9 @@ delete_object(BucketName, Key, Config)
   when is_list(BucketName), is_list(Key) ->
     {Headers, _Body} = s3_request(Config, delete,
                                   BucketName, [$/|Key], "", [], <<>>, []),
-    Marker = proplists:get_value("x-amz-delete-marker", Headers, "false"),
+    Marker = proplists:get_value("x-amz-delete-marker", Headers, <<"false">>),
     Id = proplists:get_value("x-amz-version-id", Headers, "null"),
-    [{delete_marker, list_to_existing_atom(Marker)},
+    [{delete_marker, binary_to_existing_atom(Marker, utf8)},
      {version_id, Id}].
 
 -spec delete_object_version(string(), string(), string()) ->
@@ -863,7 +863,7 @@ s3_request(Config = #config{access_key_id=AccessKey,
                                     true -> [$&, ms3_http:make_query_string(Params)]
                                 end]),
 
-    Response = hackney:request(Method, RequestURI, RequestHeaders2, Body, []),
+    Response = hackney:request(Method, RequestURI, RequestHeaders2, Body, [{connect_timeout, 8000}, {recv_timeout, 20000}]),
     case Response of
         {ok, Status, ResponseHeaders0, ClientRef} ->
             ResponseHeaders = canonicalize_headers(ResponseHeaders0),
@@ -871,11 +871,19 @@ s3_request(Config = #config{access_key_id=AccessKey,
                 true ->
                     ClientRef;
                 false ->
-                    case hackney:body(ClientRef) of
-                        {ok, FetchedBody} ->
-                            FetchedBody;
-                        Other ->
-                            erlang:error({aws_error, {body_read_error, Other}})
+                    case lists:member(Method, [get, put, head]) of
+                        true ->
+                            case hackney:body(ClientRef) of
+                                {ok, FetchedBody} ->
+                                    FetchedBody;
+                                %% Request verb has no body, e.g. DELETE
+                                {error, {closed, <<>>}} ->
+                                    "";
+                                Other ->
+                                    erlang:error({aws_error, {body_read_error, Other}})
+                            end;
+                        false ->
+                            ""
                     end
             end,
             case Status of
