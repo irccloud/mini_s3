@@ -21,7 +21,7 @@
 
 {application, mini_s3,
  [{description, "A Robust Amazon S3 client for Erlang"},
-  {vsn, "0.0.4"},
+  {vsn, "1.0.0"},
   {registered, []},
   {applications, [stdlib,
                   kernel,
