@@ -409,7 +409,7 @@ expiration_time(TimeToLive) ->
 
     (Now - Epoch) + TimeToLive.
 
--spec if_not_empty(string(), iolist()) -> iolist().
+-spec if_not_empty(string(), iodata()) -> iodata().
 if_not_empty("", _V) ->
     "";
 if_not_empty(_, Value) ->
@@ -656,7 +656,7 @@ extract_bucket(Node) ->
 
 -spec put_object(string(),
                  string(),
-                 iolist(),
+                 iodata(),
                  proplists:proplist(),
                  [{string(), string()}]) -> [{'version_id', _}, ...].
 
@@ -665,7 +665,7 @@ put_object(BucketName, Key, Value, Options, HTTPHeaders) ->
 
 -spec put_object(string(),
                  string(),
-                 iolist(),
+                 iodata(),
                  proplists:proplist(),
                  [{string(), string()}],
                  config()) -> [{'version_id', _}, ...].
