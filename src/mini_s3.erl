@@ -510,6 +510,8 @@ get_object(BucketName, Key, Options) ->
 get_object(BucketName, Key, Options, Config) ->
     get_object(BucketName, Key, Options, Config, false).
 
+-spec stream_object(string(), string(), proplists:proplist(), config()) ->
+                        proplists:proplist().
 stream_object(BucketName, Key, Options, Config) ->
     get_object(BucketName, Key, Options, Config, true).
 
