@@ -781,10 +781,14 @@ encode_grant(Grant) ->
         {'DisplayName', [proplists:get_value(display_name, proplists:get_value(owner, Grantee))]}]},
       {'Permission', [encode_permission(proplists:get_value(permission, Grant))]}]}.
 
-s3_simple_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) ->
-    case s3_request(Config, Method, Host, Path,
-                    Subresource, Params, POSTData, Headers) of
-        {_Headers, ""} -> ok;
+s3_simple_request(
+    Config, Method, Host, Path, Subresource, Params, POSTData, Headers
+) ->
+    case s3_request(
+        Config, Method, Host, Path,
+        Subresource, Params, POSTData, Headers
+    ) of
+        {_Headers, <<>>} -> ok;
         {_Headers, Body} ->
             XML = element(1,xmerl_scan:string(binary_to_list(Body))),
             case XML of
@@ -797,9 +801,13 @@ s3_simple_request(Config, Method, Host, Path, Subresource, Params, POSTData, Hea
             end
     end.
 
-s3_xml_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) ->
-    {_Headers, Body} = s3_request(Config, Method, Host, Path,
-                                  Subresource, Params, POSTData, Headers),
+s3_xml_request(
+    Config, Method, Host, Path, Subresource, Params, POSTData, Headers
+) ->
+    {_Headers, Body} = s3_request(
+        Config, Method, Host, Path,
+        Subresource, Params, POSTData, Headers
+    ),
     XML = element(1,xmerl_scan:string(binary_to_list(Body))),
     case XML of
         #xmlElement{name='Error'} ->
@@ -877,19 +885,11 @@ s3_request(Config = #config{access_key_id=AccessKey,
                 true ->
                     ClientRef;
                 false ->
-                    case lists:member(Method, [get, put, head]) of
-                        true ->
-                            case hackney:body(ClientRef) of
-                                {ok, FetchedBody} ->
-                                    FetchedBody;
-                                %% Request verb has no body, e.g. DELETE
-                                {error, {closed, <<>>}} ->
-                                    "";
-                                Other ->
-                                    erlang:error({aws_error, {body_read_error, Other}})
-                            end;
-                        false ->
-                            ""
+                    case hackney:body(ClientRef) of
+                        {ok, FetchedBody} ->
+                            FetchedBody;
+                        Other ->
+                            erlang:error({aws_error, {body_read_error, Other}})
                     end
             end,
             case Status of
