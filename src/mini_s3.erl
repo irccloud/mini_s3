@@ -888,6 +888,8 @@ s3_request(Config = #config{access_key_id=AccessKey,
                     case hackney:body(ClientRef) of
                         {ok, FetchedBody} ->
                             FetchedBody;
+                        {error, {closed, <<>>}} ->
+                            <<>>;
                         Other ->
                             erlang:error({aws_error, {body_read_error, Other}})
                     end
