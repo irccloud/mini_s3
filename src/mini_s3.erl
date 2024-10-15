@@ -881,9 +881,16 @@ s3_request(Config = #config{access_key_id=AccessKey,
     case Response of
         {ok, Status, ResponseHeaders0, ClientRef} ->
             ResponseHeaders = canonicalize_headers(ResponseHeaders0),
+            ContentLength = proplists:get_value("content-length", ResponseHeaders),
             ResponseBody = case Chunked of
                 true ->
                     ClientRef;
+                false when Method =:= delete ->
+                    <<>>;
+                false when ContentLength =:= <<"0">> ->
+                    <<>>;
+                false when Status =:= 204 ->
+                    <<>>;
                 false ->
                     case hackney:body(ClientRef) of
                         {ok, FetchedBody} ->
