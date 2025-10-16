@@ -302,8 +302,7 @@ extract_contents(Nodes) ->
     [ms3_xml:decode(Attributes, Node) || Node <- Nodes].
 
 extract_user([Node]) ->
-    Attributes = [{id, "ID", text},
-                  {display_name, "DisplayName", optional_text}],
+    Attributes = [{id, "ID", text}],
     ms3_xml:decode(Attributes, Node).
 
 -spec get_bucket_attribute(string(), bucket_attribute_name()) -> term().
@@ -696,10 +695,9 @@ set_object_acl(BucketName, Key, ACL) ->
 set_object_acl(BucketName, Key, ACL, Config)
   when is_list(BucketName), is_list(Key), is_list(ACL) ->
     Id = proplists:get_value(id, proplists:get_value(owner, ACL)),
-    DisplayName = proplists:get_value(display_name, proplists:get_value(owner, ACL)),
     ACL1 = proplists:get_value(access_control_list, ACL),
     XML = {'AccessControlPolicy',
-           [{'Owner', [{'ID', [Id]}, {'DisplayName', [DisplayName]}]},
+           [{'Owner', [{'ID', [Id]}]},
             {'AccessControlList', encode_grants(ACL1)}]},
     XMLText = list_to_binary(xmerl:export_simple([XML], xmerl_xml)),
     s3_simple_request(Config, put, BucketName, [$/|Key], "acl", [], XMLText, []).
@@ -721,8 +719,7 @@ set_bucket_attribute(BucketName, AttributeName, Value, Config)
             acl ->
                 ACLXML = {'AccessControlPolicy',
                           [{'Owner',
-                            [{'ID', [proplists:get_value(id, proplists:get_value(owner, Value))]},
-                             {'DisplayName', [proplists:get_value(display_name, proplists:get_value(owner, Value))]}]},
+                            [{'ID', [proplists:get_value(id, proplists:get_value(owner, Value))]}]},
                            {'AccessControlList', encode_grants(proplists:get_value(access_control_list, Value))}]},
                 {"acl", ACLXML};
             logging ->
@@ -777,8 +774,7 @@ encode_grant(Grant) ->
     Grantee = proplists:get_value(grantee, Grant),
     {'Grant',
      [{'Grantee', [{xmlns, ?XMLNS_S3}],
-       [{'ID', [proplists:get_value(id, proplists:get_value(owner, Grantee))]},
-        {'DisplayName', [proplists:get_value(display_name, proplists:get_value(owner, Grantee))]}]},
+       [{'ID', [proplists:get_value(id, proplists:get_value(owner, Grantee))]}]},
       {'Permission', [encode_permission(proplists:get_value(permission, Grant))]}]}.
 
 s3_simple_request(
